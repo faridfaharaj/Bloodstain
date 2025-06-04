@@ -31,6 +31,13 @@ public class Bloodstain {
 
     public static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
 
+    @Mod.Instance
+    public static Bloodstain instance;
+
+    public static Bloodstain getInstance(){
+        return instance;
+    }
+
     /**
      * <a href="https://cleanroommc.com/wiki/forge-mod-development/event#overview">
      *     Take a look at how many FMLStateEvents you can listen to via the @Mod.EventHandler annotation here

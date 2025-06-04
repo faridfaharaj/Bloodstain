@@ -1,10 +1,12 @@
 package com.faridfaharaj.bloodstain.proxies;
 
+import com.faridfaharaj.bloodstain.entities.EntityRegistry;
+
 public class CommonProxy {
 
     public void proxyPreInit(){
 
-        // Pre-initialization (server/client) code
+        EntityRegistry.registerEntities();
 
     }
 

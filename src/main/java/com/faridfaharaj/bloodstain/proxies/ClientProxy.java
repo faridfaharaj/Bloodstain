@@ -1,5 +1,9 @@
 package com.faridfaharaj.bloodstain.proxies;
 
+import com.faridfaharaj.bloodstain.entities.entity.Ghost;
+import com.faridfaharaj.bloodstain.entities.renderers.GhostRenderer;
+import net.minecraftforge.fml.client.registry.RenderingRegistry;
+
 public class ClientProxy extends CommonProxy{
 
     @Override
@@ -7,7 +11,10 @@ public class ClientProxy extends CommonProxy{
         // Run CommonProxy's (extended class) pre-initialization processes
         super.proxyPreInit();
 
-        // Pre-initialization (client) code
+        RenderingRegistry.registerEntityRenderingHandler(
+                Ghost.class,
+                GhostRenderer::new
+        );
 
     }
 
