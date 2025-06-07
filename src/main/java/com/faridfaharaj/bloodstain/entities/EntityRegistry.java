@@ -3,7 +3,6 @@ package com.faridfaharaj.bloodstain.entities;
 import com.faridfaharaj.bloodstain.Bloodstain;
 import com.faridfaharaj.bloodstain.Tags;
 import com.faridfaharaj.bloodstain.entities.entity.Ghost;
-import com.faridfaharaj.bloodstain.entities.entity.Stain;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
 
