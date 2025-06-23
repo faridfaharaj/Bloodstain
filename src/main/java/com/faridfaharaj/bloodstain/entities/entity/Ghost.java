@@ -14,6 +14,7 @@ import java.util.UUID;
 
 public class Ghost extends EntityLiving {
 
+    private final UUID playerUUID;
     long playbackTime = System.currentTimeMillis();
     int actualTick = 0;
 
@@ -21,6 +22,8 @@ public class Ghost extends EntityLiving {
         super(worldIn);
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
+
+        this.playerUUID = null;
     }
 
     public Ghost(World worldIn, UUID playerUUID) {
@@ -28,12 +31,7 @@ public class Ghost extends EntityLiving {
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
 
-        NBTTagCompound nbt = this.getEntityData();
-        NBTTagCompound uuidTag = new NBTTagCompound();
-        uuidTag.setLong("msb", playerUUID.getMostSignificantBits());
-        uuidTag.setLong("lsb", playerUUID.getLeastSignificantBits());
-        nbt.setTag("Bloodstain:death_tag", uuidTag);
-        this.readFromNBT(nbt);
+        this.playerUUID = playerUUID;
     }
 
     @Override
@@ -53,14 +51,9 @@ public class Ghost extends EntityLiving {
         super.onLivingUpdate();
         if (world.isRemote) return;
 
-        NBTTagCompound nbt = this.getEntityData();
-        if (!nbt.hasKey("Bloodstain:death_tag")) return;
+        if (playerUUID == null) return;
 
-        NBTTagCompound uuidTag = nbt.getCompoundTag("Bloodstain:death_tag");
-        long msb = uuidTag.getLong("msb");
-        long lsb = uuidTag.getLong("lsb");
-
-        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(new UUID(msb,lsb));
+        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(playerUUID);
         if (recorder == null || recorder.getSnapshotsSize() < 2) return;
 
         PlayerMotionRecorder.PlayerMotionSnapshot prev = recorder.getSnapshot(actualTick);
@@ -159,6 +152,11 @@ public class Ghost extends EntityLiving {
     @Override
     public boolean isInLava()
     {
+        return false;
+    }
+
+    @Override
+    public boolean writeToNBTOptional(NBTTagCompound compound) {
         return false;
     }
 
