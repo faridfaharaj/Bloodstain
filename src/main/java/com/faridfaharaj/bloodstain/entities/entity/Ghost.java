@@ -4,6 +4,7 @@ import com.faridfaharaj.bloodstain.playerHistories.PlayerMotionRecorder;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
@@ -13,17 +14,13 @@ import java.util.UUID;
 
 public class Ghost extends EntityLiving {
 
-    private final UUID playerUUID;
-    long playbackTime;
+    long playbackTime = System.currentTimeMillis();
     int actualTick = 0;
 
     public Ghost(World worldIn) {
         super(worldIn);
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
-
-        this.playbackTime = System.currentTimeMillis();
-        this.playerUUID = null;
     }
 
     public Ghost(World worldIn, UUID playerUUID) {
@@ -31,8 +28,12 @@ public class Ghost extends EntityLiving {
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
 
-        this.playbackTime = System.currentTimeMillis();
-        this.playerUUID = playerUUID;
+        NBTTagCompound nbt = this.getEntityData();
+        NBTTagCompound uuidTag = new NBTTagCompound();
+        uuidTag.setLong("msb", playerUUID.getMostSignificantBits());
+        uuidTag.setLong("lsb", playerUUID.getLeastSignificantBits());
+        nbt.setTag("Bloodstain:death_tag", uuidTag);
+        this.readFromNBT(nbt);
     }
 
     @Override
@@ -52,9 +53,14 @@ public class Ghost extends EntityLiving {
         super.onLivingUpdate();
         if (world.isRemote) return;
 
-        if (playerUUID == null) return;
+        NBTTagCompound nbt = this.getEntityData();
+        if (!nbt.hasKey("Bloodstain:death_tag")) return;
 
-        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(playerUUID);
+        NBTTagCompound uuidTag = nbt.getCompoundTag("Bloodstain:death_tag");
+        long msb = uuidTag.getLong("msb");
+        long lsb = uuidTag.getLong("lsb");
+
+        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(new UUID(msb,lsb));
         if (recorder == null || recorder.getSnapshotsSize() < 2) return;
 
         PlayerMotionRecorder.PlayerMotionSnapshot prev = recorder.getSnapshot(actualTick);
