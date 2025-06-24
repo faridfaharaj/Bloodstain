@@ -66,6 +66,12 @@ public class PlayerMotionRecorder {
         public double motionX, motionY, motionZ;
         public float rotationYaw, rotationPitch;
 
+        public boolean isSneaking, isBurning, ishurt;
+
+        public boolean hasPotion;
+
+        public boolean isSwingInProgress, isRiding, isElytraFlying, isPlayerSleeping;
+
         public PlayerMotionSnapshot() {
             this.posX = 0;
             this.posY = 0;
@@ -75,6 +81,17 @@ public class PlayerMotionRecorder {
             this.motionZ = 0;
             this.rotationYaw = 0;
             this.rotationPitch = 0;
+
+            this.isSneaking = false;
+            this.isBurning = false;
+            this.isElytraFlying = false;
+            this.isPlayerSleeping = false;
+            this.isRiding = false;
+            this.isSwingInProgress = false;
+
+            this.hasPotion = false;
+
+            this.ishurt = false;
 
             this.time = 0;
         }
@@ -89,6 +106,17 @@ public class PlayerMotionRecorder {
             this.rotationYaw = snapshot.rotationYaw;
             this.rotationPitch = snapshot.rotationPitch;
 
+            this.isSneaking = snapshot.isSneaking;
+            this.isBurning = snapshot.isBurning;
+            this.isElytraFlying = snapshot.isElytraFlying;
+            this.isPlayerSleeping = snapshot.isPlayerSleeping;
+            this.isRiding = snapshot.isRiding;
+            this.isSwingInProgress = snapshot.isSwingInProgress;
+
+            this.hasPotion = snapshot.hasPotion;
+
+            this.ishurt = snapshot.ishurt;
+
             this.time = snapshot.time;
         }
 
@@ -101,6 +129,17 @@ public class PlayerMotionRecorder {
             this.motionZ = player.motionZ;
             this.rotationYaw = player.rotationYaw;
             this.rotationPitch = player.rotationPitch;
+
+            this.isSneaking = player.isSneaking();
+            this.isBurning = player.isBurning();
+            this.isElytraFlying = player.isElytraFlying();
+            this.isPlayerSleeping = player.isPlayerSleeping();
+            this.isRiding = player.isRiding();
+            this.isSwingInProgress = player.isSwingInProgress;
+
+            this.hasPotion = !player.getActivePotionEffects().isEmpty();
+
+            this.ishurt = player.hurtTime > 0;
 
             this.time = System.currentTimeMillis();
         }

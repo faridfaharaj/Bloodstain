@@ -2,6 +2,7 @@ package com.faridfaharaj.bloodstain.entities.renderers;
 
 import com.faridfaharaj.bloodstain.entities.entity.Ghost;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -9,6 +10,8 @@ import net.minecraft.client.renderer.entity.RenderLiving;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
@@ -27,6 +30,20 @@ public class GhostRenderer extends RenderLiving<Ghost> {
 
     @Override
     public void doRender(Ghost entity, double x, double y, double z, float entityYaw, float partialTicks) {
+        ModelPlayer modelPlayer = (ModelPlayer) this.mainModel;
+        modelPlayer.isSneak = entity.isSneaking();
+
+        float pastswing = entity.pastSwing;
+        float swing = entity.getSwing();
+        swing = swing - pastswing;
+        if (swing < 0.0F) {
+            ++swing;
+        }
+        swing = pastswing + swing * partialTicks;
+        modelPlayer.swingProgress = swing;
+        boolean renderRiding = entity.getRiding();
+        modelPlayer.isRiding = renderRiding;
+
         GlStateManager.pushMatrix();
 
         GlStateManager.pushAttrib();
@@ -52,9 +69,8 @@ public class GhostRenderer extends RenderLiving<Ghost> {
             if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Pre<>(entity, this, partialTicks, x, y, z))) return;
             GlStateManager.pushMatrix();
             GlStateManager.enableCull();
-            this.mainModel.swingProgress = this.getSwingProgress(entity, partialTicks);
-            boolean shouldSit = entity.isRiding() && (entity.getRidingEntity() != null && entity.getRidingEntity().shouldRiderSit());
-            this.mainModel.isRiding = shouldSit;
+            this.mainModel.swingProgress = swing;
+            this.mainModel.isRiding = renderRiding;
             this.mainModel.isChild = entity.isChild();
 
             try
@@ -63,10 +79,9 @@ public class GhostRenderer extends RenderLiving<Ghost> {
                 float f1 = this.interpolateRotation(entity.prevRotationYawHead, entity.rotationYawHead, partialTicks);
                 float f2 = f1 - f;
 
-                if (shouldSit && entity.getRidingEntity() instanceof EntityLivingBase)
+                if (renderRiding)
                 {
-                    EntityLivingBase entitylivingbase = (EntityLivingBase)entity.getRidingEntity();
-                    f = this.interpolateRotation(entitylivingbase.prevRenderYawOffset, entitylivingbase.renderYawOffset, partialTicks);
+                    f = this.interpolateRotation(entity.prevRenderYawOffset, entity.renderYawOffset, partialTicks);
                     f2 = f1 - f;
                     float f3 = MathHelper.wrapDegrees(f2);
 
@@ -98,7 +113,7 @@ public class GhostRenderer extends RenderLiving<Ghost> {
                 float f5 = 0.0F;
                 float f6 = 0.0F;
 
-                if (!entity.isRiding())
+                if (!renderRiding)
                 {
                     f5 = entity.prevLimbSwingAmount + (entity.limbSwingAmount - entity.prevLimbSwingAmount) * partialTicks;
                     f6 = entity.limbSwing - entity.limbSwingAmount * (1.0F - partialTicks);
@@ -162,14 +177,20 @@ public class GhostRenderer extends RenderLiving<Ghost> {
             GlStateManager.enableTexture2D();
             GlStateManager.setActiveTexture(OpenGlHelper.defaultTexUnit);
             GlStateManager.popMatrix();
-            super.doRender(entity, x, y, z, entityYaw, partialTicks);
+            {
+                if (!this.renderOutlines)
+                {
+                    this.renderName(entity, x, y, z);
+                }
+            }
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Post<>(entity, this, partialTicks, x, y, z));
 
+        }
+        {
             if (!this.renderOutlines)
             {
-                this.renderLeash(entity, x, y, z, entityYaw, partialTicks);
+                this.renderName(entity, x, y, z);
             }
-
         }
 
         GlStateManager.disableBlend();

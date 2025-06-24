@@ -3,11 +3,18 @@ package com.faridfaharaj.bloodstain.entities.entity;
 import com.faridfaharaj.bloodstain.playerHistories.PlayerMotionRecorder;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.init.MobEffects;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -18,10 +25,26 @@ public class Ghost extends EntityLiving {
     long playbackTime = System.currentTimeMillis();
     int actualTick = 0;
 
+    private static final DataParameter<Boolean> RENDER_RIDING = EntityDataManager.createKey(Ghost.class, DataSerializers.BOOLEAN);
+    private static final DataParameter<Float> SWINGING = EntityDataManager.createKey(Ghost.class, DataSerializers.FLOAT);
+
+    public float pastSwing = 0;
+    public float getSwing(){
+        float swing = this.dataManager.get(SWINGING);
+        if(world.isRemote){
+            pastSwing = swing;
+        }
+        return swing;
+    }
+    public boolean getRiding(){
+        return this.dataManager.get(RENDER_RIDING);
+    }
+
     public Ghost(World worldIn) {
         super(worldIn);
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
+        this.setHealth(Integer.MAX_VALUE);
 
         this.playerUUID = null;
     }
@@ -30,8 +53,16 @@ public class Ghost extends EntityLiving {
         super(worldIn);
         this.setNoAI(true);
         this.setSize(0.6F, 1.8F);
+        this.setHealth(Integer.MAX_VALUE);
 
         this.playerUUID = playerUUID;
+    }
+
+    @Override
+    protected void entityInit() {
+        super.entityInit();
+        this.dataManager.register(RENDER_RIDING, false);
+        this.dataManager.register(SWINGING, 0.0f);
     }
 
     @Override
@@ -43,13 +74,18 @@ public class Ghost extends EntityLiving {
     protected void applyEntityAttributes() {
         super.applyEntityAttributes();
         this.noClip = true;
-        this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.25D);
+    }
+
+    @Override
+    public EnumHandSide getPrimaryHand() {
+        return EnumHandSide.RIGHT;
     }
 
     @Override
     public void onLivingUpdate() {
         super.onLivingUpdate();
-        if (world.isRemote) return;
+
+        if(world.isRemote) return;
 
         if (playerUUID == null) return;
 
@@ -70,6 +106,40 @@ public class Ghost extends EntityLiving {
 
         this.setPositionAndRotation(x, y, z, yaw, pitch);
 
+        if (prev.isBurning) {
+            this.setFire(1);
+        }
+
+        this.setSneaking(prev.isSneaking);
+
+        if (prev.hasPotion) {
+            if(!this.isPotionActive(MobEffects.HUNGER)){
+                addPotionEffect(new PotionEffect(MobEffects.HUNGER, 99999, 1));
+            }
+        }else {
+            if(this.isPotionActive(MobEffects.HUNGER)){
+                clearActivePotions();
+            }
+        }
+
+        if(prev.ishurt){
+            if(this.hurtTime<=0){
+                this.hurtTime = this.maxHurtTime = 10; // WTF this should be illegal
+                this.world.setEntityState(this, (byte)2);
+            }
+        }
+
+
+        if (prev.isSwingInProgress) {
+            if (!this.isSwingInProgress) {
+                this.swingArm(EnumHand.MAIN_HAND);
+            }
+        }
+        this.updateArmSwingProgress();
+        this.dataManager.set(SWINGING, this.swingProgress);
+
+        this.dataManager.set(RENDER_RIDING, prev.isRiding);
+
         if (t >= 1f) {
             playbackTime = System.currentTimeMillis();
             actualTick++;
@@ -88,8 +158,17 @@ public class Ghost extends EntityLiving {
     }
 
     @Override
-    public boolean isAIDisabled() {
-        return true;
+    @SideOnly(Side.CLIENT)
+    public void handleStatusUpdate(byte id) {
+        this.hurtTime = this.maxHurtTime = 10;
+    }
+
+    @Override
+    public boolean attackEntityFrom(DamageSource source, float amount) {
+        if (source.isFireDamage()) {
+            return false;
+        }
+        return super.attackEntityFrom(source, amount);
     }
 
     @Override

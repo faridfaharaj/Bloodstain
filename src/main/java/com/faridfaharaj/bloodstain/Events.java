@@ -30,11 +30,16 @@ public class Events {
             EntityPlayer player = (EntityPlayer) event.getEntityLiving();
             World world = player.world;
 
-            PlayerMotionRecorder.recorders.get(player.getUniqueID()).saveRecording();
-            Ghost ghost = new Ghost(world, player.getUniqueID());
-            ghost.setPosition(player.posX, player.posY, player.posZ);
-            world.spawnEntity(ghost);
+            if (!world.isRemote) {
+                PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(player.getUniqueID());
+                if (recorder != null) {
+                    recorder.saveRecording();
+                }
 
+                Ghost ghost = new Ghost(world, player.getUniqueID());
+                ghost.setPosition(player.posX, player.posY, player.posZ);
+                world.spawnEntity(ghost);
+            }
         }
     }
 
@@ -46,9 +51,10 @@ public class Events {
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         EntityPlayer player = event.player;
 
-
-        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.computeIfAbsent(player.getUniqueID(), id -> new PlayerMotionRecorder());
-        recorder.record(player);
+        if(!player.world.isRemote){
+            PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.computeIfAbsent(player.getUniqueID(), id -> new PlayerMotionRecorder());
+            recorder.record(player);
+        }
     }
 
     @SubscribeEvent
