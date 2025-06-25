@@ -3,7 +3,13 @@ package com.faridfaharaj.bloodstain.entities.entity;
 import com.faridfaharaj.bloodstain.playerHistories.PlayerMotionRecorder;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.monster.EntityZombie;
+import net.minecraft.init.Items;
 import net.minecraft.init.MobEffects;
+import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.item.EnumAction;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
@@ -12,6 +18,7 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -95,7 +102,8 @@ public class Ghost extends EntityLiving {
         PlayerMotionRecorder.PlayerMotionSnapshot prev = recorder.getSnapshot(actualTick);
         PlayerMotionRecorder.PlayerMotionSnapshot next = recorder.getSnapshot(actualTick + 1);
 
-        float t = (System.currentTimeMillis() - playbackTime) / (float) (next.time - prev.time);
+        long now = System.currentTimeMillis();
+        float t = (now - playbackTime) / (float) (next.time - prev.time);
         t = Math.min(Math.max(t, 0f), 1f);
 
         double x = lerp(prev.posX, next.posX, t);
@@ -129,6 +137,28 @@ public class Ghost extends EntityLiving {
             }
         }
 
+        if(prev.action != EnumAction.NONE){
+            switch(prev.action){
+                case EAT:
+                    this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(Items.GOLDEN_APPLE));
+                    this.setActiveHand(EnumHand.MAIN_HAND);
+                    break;
+                case DRINK:
+                    this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(Items.POTIONITEM));
+                    this.setActiveHand(EnumHand.MAIN_HAND);
+                    break;
+                case BOW:
+                    this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+                    this.setActiveHand(EnumHand.MAIN_HAND);
+                    break;
+                case BLOCK:
+                    this.setItemStackToSlot(EntityEquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+                    this.setActiveHand(EnumHand.OFF_HAND);
+                    break;
+            }
+        }
+
+
 
         if (prev.isSwingInProgress) {
             if (!this.isSwingInProgress) {
@@ -141,7 +171,7 @@ public class Ghost extends EntityLiving {
         this.dataManager.set(RENDER_RIDING, prev.isRiding);
 
         if (t >= 1f) {
-            playbackTime = System.currentTimeMillis();
+            playbackTime = now;
             actualTick++;
             if(actualTick >= recorder.getSnapshotsSize()-1){
                 this.setHealth(0.0F);
@@ -158,9 +188,43 @@ public class Ghost extends EntityLiving {
     }
 
     @Override
+    protected void updateItemUse(ItemStack stack, int eatingParticleCount) {
+        if (!stack.isEmpty() && this.isHandActive())
+        {
+            if (stack.getItemUseAction() == EnumAction.EAT)
+            {
+                for (int i = 0; i < eatingParticleCount; ++i)
+                {
+                    Vec3d vec3d = new Vec3d(((double)this.rand.nextFloat() - 0.5D) * 0.1D, Math.random() * 0.1D + 0.1D, 0.0D);
+                    vec3d = vec3d.rotatePitch(-this.rotationPitch * 0.017453292F);
+                    vec3d = vec3d.rotateYaw(-this.rotationYaw * 0.017453292F);
+                    double d0 = (double)(-this.rand.nextFloat()) * 0.6D - 0.3D;
+                    Vec3d vec3d1 = new Vec3d(((double)this.rand.nextFloat() - 0.5D) * 0.3D, d0, 0.6D);
+                    vec3d1 = vec3d1.rotatePitch(-this.rotationPitch * 0.017453292F);
+                    vec3d1 = vec3d1.rotateYaw(-this.rotationYaw * 0.017453292F);
+                    vec3d1 = vec3d1.add(this.posX, this.posY + (double)this.getEyeHeight(), this.posZ);
+
+                    if (stack.getHasSubtypes())
+                    {
+                        this.world.spawnParticle(EnumParticleTypes.ITEM_CRACK, vec3d1.x, vec3d1.y, vec3d1.z, vec3d.x, vec3d.y + 0.05D, vec3d.z, Item.getIdFromItem(stack.getItem()), stack.getMetadata());
+                    }
+                    else
+                    {
+                        this.world.spawnParticle(EnumParticleTypes.ITEM_CRACK, vec3d1.x, vec3d1.y, vec3d1.z, vec3d.x, vec3d.y + 0.05D, vec3d.z, Item.getIdFromItem(stack.getItem()));
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
     @SideOnly(Side.CLIENT)
     public void handleStatusUpdate(byte id) {
-        this.hurtTime = this.maxHurtTime = 10;
+        if(id == 2){
+            this.hurtTime = this.maxHurtTime = 10;
+            return;
+        }
+        super.handleStatusUpdate(id);
     }
 
     @Override

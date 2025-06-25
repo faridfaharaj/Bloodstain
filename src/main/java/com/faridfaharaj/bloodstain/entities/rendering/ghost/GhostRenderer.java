@@ -1,37 +1,59 @@
-package com.faridfaharaj.bloodstain.entities.renderers;
+package com.faridfaharaj.bloodstain.entities.rendering.ghost;
 
 import com.faridfaharaj.bloodstain.entities.entity.Ghost;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RenderLiving;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.client.renderer.entity.layers.LayerBipedArmor;
+import net.minecraft.client.renderer.entity.layers.LayerHeldItem;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
-
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 public class GhostRenderer extends RenderLiving<Ghost> {
     private final ResourceLocation TEXTURE = new ResourceLocation("textures/entity/steve.png");
 
     public GhostRenderer(RenderManager renderManager) {
         super(renderManager, new ModelPlayer(0.0f, false), 0.5F);
+        this.addLayer(new LayerHeldItem(this));
+        this.addLayer(new LayerBipedArmor(this));
     }
+
 
     @Override
     public void doRender(Ghost entity, double x, double y, double z, float entityYaw, float partialTicks) {
         ModelPlayer modelPlayer = (ModelPlayer) this.mainModel;
         modelPlayer.isSneak = entity.isSneaking();
+
+        if(entity.isHandActive()){
+            switch (entity.getActiveItemStack().getItemUseAction()){
+                case BOW:
+                    if (entity.getActiveHand() == EnumHand.MAIN_HAND) {
+                        modelPlayer.rightArmPose = ModelBiped.ArmPose.BOW_AND_ARROW;
+                    } else {
+                        modelPlayer.leftArmPose = ModelBiped.ArmPose.BOW_AND_ARROW;
+                    }
+                    break;
+                case BLOCK:
+                    if (entity.getActiveHand() == EnumHand.MAIN_HAND) {
+                        modelPlayer.rightArmPose = ModelBiped.ArmPose.BLOCK;
+                    } else {
+                        modelPlayer.leftArmPose = ModelBiped.ArmPose.BLOCK;
+                    }
+                    break;
+                default:
+                    modelPlayer.rightArmPose = entity.getHeldItemMainhand().isEmpty()?ModelBiped.ArmPose.EMPTY:ModelBiped.ArmPose.ITEM;
+                    modelPlayer.leftArmPose = entity.getHeldItemOffhand().isEmpty()?ModelBiped.ArmPose.EMPTY:ModelBiped.ArmPose.ITEM;
+                    break;
+            }
+        }else {
+            modelPlayer.rightArmPose = entity.getHeldItemMainhand().isEmpty()?ModelBiped.ArmPose.EMPTY:ModelBiped.ArmPose.ITEM;
+            modelPlayer.leftArmPose = entity.getHeldItemOffhand().isEmpty()?ModelBiped.ArmPose.EMPTY:ModelBiped.ArmPose.ITEM;
+        }
 
         float pastswing = entity.pastSwing;
         float swing = entity.getSwing();
@@ -44,6 +66,8 @@ public class GhostRenderer extends RenderLiving<Ghost> {
         boolean renderRiding = entity.getRiding();
         modelPlayer.isRiding = renderRiding;
 
+
+        // GL
         GlStateManager.pushMatrix();
 
         GlStateManager.pushAttrib();
@@ -62,7 +86,7 @@ public class GhostRenderer extends RenderLiving<Ghost> {
 
         GlStateManager.depthMask(true);
 
-        GlStateManager.color(1F, 1F, 1F, 0.4F);
+        GlStateManager.color(1F, 1F, 1F, 0.6F);
 
         {
 
@@ -145,6 +169,8 @@ public class GhostRenderer extends RenderLiving<Ghost> {
                         this.renderModel(entity, f6, f5, f8, f2, f7, f4);
                     }
 
+                    this.renderLayers(entity, f6, f5, partialTicks, f8, f2, f7, f4);
+
                     GlStateManager.disableOutlineMode();
                     GlStateManager.disableColorMaterial();
 
@@ -165,13 +191,15 @@ public class GhostRenderer extends RenderLiving<Ghost> {
 
                     GlStateManager.depthMask(true);
 
+                    this.renderLayers(entity, f6, f5, partialTicks, f8, f2, f7, f4);
                 }
 
                 GlStateManager.disableRescaleNormal();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
-
+            catch (Exception exception)
+            {
+                exception.printStackTrace();
+            }
 
             GlStateManager.setActiveTexture(OpenGlHelper.lightmapTexUnit);
             GlStateManager.enableTexture2D();
@@ -199,6 +227,8 @@ public class GhostRenderer extends RenderLiving<Ghost> {
 
         GlStateManager.popMatrix();
     }
+
+
 
     @Override
     protected ResourceLocation getEntityTexture(Ghost entity) {

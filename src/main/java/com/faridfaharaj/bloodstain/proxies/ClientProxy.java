@@ -1,7 +1,7 @@
 package com.faridfaharaj.bloodstain.proxies;
 
 import com.faridfaharaj.bloodstain.entities.entity.Ghost;
-import com.faridfaharaj.bloodstain.entities.renderers.GhostRenderer;
+import com.faridfaharaj.bloodstain.entities.rendering.ghost.GhostRenderer;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 
 public class ClientProxy extends CommonProxy{
