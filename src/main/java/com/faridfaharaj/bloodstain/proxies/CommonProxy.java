@@ -1,10 +1,17 @@
 package com.faridfaharaj.bloodstain.proxies;
 
+import com.faridfaharaj.bloodstain.Events;
+import com.faridfaharaj.bloodstain.entities.EntityRegistry;
+import com.faridfaharaj.bloodstain.networking.NetworkHandler;
+import net.minecraftforge.common.MinecraftForge;
+
 public class CommonProxy {
 
     public void proxyPreInit(){
 
-        // Pre-initialization (server/client) code
+        MinecraftForge.EVENT_BUS.register(new Events());
+        EntityRegistry.registerEntities();
+        NetworkHandler.registerPackets();
 
     }
 
