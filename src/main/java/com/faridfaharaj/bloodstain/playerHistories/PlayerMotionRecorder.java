@@ -2,14 +2,15 @@ package com.faridfaharaj.bloodstain.playerHistories;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.EnumAction;
+import net.minecraft.nbt.NBTTagByteArray;
+import net.minecraft.nbt.NBTTagCompound;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class PlayerMotionRecorder {
-
-    public static Map<UUID, PlayerMotionRecorder> recorders = new HashMap<>();
 
     private static final int BUFFER_SIZE = 200;
     private final PlayerMotionSnapshot[] snapshots = new PlayerMotionSnapshot[BUFFER_SIZE];
@@ -61,10 +62,37 @@ public class PlayerMotionRecorder {
         savedIndex = index;
     }
 
+    public byte[] toBytes(){
+
+        ByteBuffer buf = ByteBuffer.allocate(BUFFER_SIZE*PlayerMotionSnapshot.getBytes() + Integer.BYTES*2);
+        for(PlayerMotionSnapshot snap:savedSnapshots){
+            buf.put(snap.toBytes());
+        }
+        buf.putInt(savedIndex);
+        buf.putInt(savedSize);
+
+        return buf.array();
+
+    }
+
+    public static PlayerMotionRecorder fromBytes(byte[] bytes){
+
+        PlayerMotionRecorder recorder = new PlayerMotionRecorder();
+
+        ByteBuffer buf = ByteBuffer.wrap(bytes);
+        for(int i = 0; i<BUFFER_SIZE; i++){
+            recorder.savedSnapshots[i].update(buf);
+        }
+        recorder.savedIndex = buf.getInt();
+        recorder.savedSize = buf.getInt();
+
+        return recorder;
+
+    }
+
     public static class PlayerMotionSnapshot {
         public long time;
         public double posX, posY, posZ;
-        public double motionX, motionY, motionZ;
         public float rotationYaw, rotationPitch;
         public boolean isSneaking, isBurning, ishurt, hasPotion;
 
@@ -76,9 +104,6 @@ public class PlayerMotionRecorder {
             this.posX = 0;
             this.posY = 0;
             this.posZ = 0;
-            this.motionX = 0;
-            this.motionY = 0;
-            this.motionZ = 0;
             this.rotationYaw = 0;
             this.rotationPitch = 0;
 
@@ -101,9 +126,6 @@ public class PlayerMotionRecorder {
             this.posX = snapshot.posX;
             this.posY = snapshot.posY;
             this.posZ = snapshot.posZ;
-            this.motionX = snapshot.motionX;
-            this.motionY = snapshot.motionY;
-            this.motionZ = snapshot.motionZ;
             this.rotationYaw = snapshot.rotationYaw;
             this.rotationPitch = snapshot.rotationPitch;
 
@@ -126,9 +148,6 @@ public class PlayerMotionRecorder {
             this.posX = player.posX;
             this.posY = player.posY;
             this.posZ = player.posZ;
-            this.motionX = player.motionX;
-            this.motionY = player.motionY;
-            this.motionZ = player.motionZ;
             this.rotationYaw = player.rotationYaw;
             this.rotationPitch = player.rotationPitch;
 
@@ -149,6 +168,83 @@ public class PlayerMotionRecorder {
             this.isPlayerSleeping = player.isPlayerSleeping();
 
             this.time = System.currentTimeMillis();
+        }
+
+        static int BYTES = Long.BYTES + Double.BYTES*3 + Float.BYTES*2 + Byte.BYTES*4 + Byte.BYTES + Byte.BYTES*4;
+
+        public static int getBytes(){
+            return BYTES;
+        }
+
+        public byte[] toBytes(){
+
+            ByteBuffer buf = ByteBuffer.allocate(getBytes());
+            buf.putLong(time);
+
+            buf.putDouble(posX);
+            buf.putDouble(posY);
+            buf.putDouble(posZ);
+            buf.putFloat(rotationYaw);
+            buf.putFloat(rotationPitch);
+
+            buf.put((byte) (isSneaking?1:0));
+            buf.put((byte) (isBurning?1:0));
+            buf.put((byte) (ishurt?1:0));
+            buf.put((byte) (hasPotion?1:0));
+
+            byte actionNum;
+            switch (action){
+                case NONE:
+                    actionNum = 0;
+                    break;
+                case EAT:
+                    actionNum = 1;
+                    break;
+                case DRINK:
+                    actionNum = 2;
+                    break;
+                case BLOCK:
+                    actionNum = 3;
+                    break;
+                case BOW:
+                    actionNum = 4;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid EnumAction");
+            }
+            buf.put(actionNum);
+
+            buf.put((byte) (isSwingInProgress?1:0));
+            buf.put((byte) (isRiding?1:0));
+            buf.put((byte) (isElytraFlying?1:0));
+            buf.put((byte) (isPlayerSleeping?1:0));
+
+
+            return buf.array();
+
+        }
+
+        public void update(ByteBuffer buf){
+            time = buf.getLong();
+
+            posX = buf.getDouble();
+            posY = buf.getDouble();
+            posZ = buf.getDouble();
+            rotationYaw = buf.getFloat();
+            rotationPitch = buf.getFloat();
+
+            isSneaking = buf.get() == 1;
+            isBurning = buf.get() == 1;
+            ishurt = buf.get() == 1;
+            hasPotion = buf.get() == 1;
+
+            action = EnumAction.values()[buf.get()];
+
+            isSwingInProgress = buf.get() == 1;
+            isRiding = buf.get() == 1;
+            isElytraFlying = buf.get() == 1;
+            isPlayerSleeping = buf.get() == 1;
+
         }
     }
 }

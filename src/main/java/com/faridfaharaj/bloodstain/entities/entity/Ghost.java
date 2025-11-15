@@ -1,5 +1,6 @@
 package com.faridfaharaj.bloodstain.entities.entity;
 
+import com.faridfaharaj.bloodstain.data.StainData;
 import com.faridfaharaj.bloodstain.playerHistories.PlayerMotionRecorder;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
@@ -96,7 +97,7 @@ public class Ghost extends EntityLiving {
 
         if (playerUUID == null) return;
 
-        PlayerMotionRecorder recorder = PlayerMotionRecorder.recorders.get(playerUUID);
+        PlayerMotionRecorder recorder = StainData.getStainData(playerUUID, this.world).recorder;
         if (recorder == null || recorder.getSnapshotsSize() < 2) return;
 
         PlayerMotionRecorder.PlayerMotionSnapshot prev = recorder.getSnapshot(actualTick);
